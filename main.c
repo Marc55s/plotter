@@ -7,27 +7,45 @@
 #define SCALE 50.0 // Scale factor (pixels per unit)
 
 float function(float x) { 
-    return sin(x) * 3;
+    return sin(x);
 }
+
+float function2(float x) { 
+    return cos(x);
+}
+
 
 void DrawAxes() {
     DrawLine(0, -HEIGHT/2, 0, HEIGHT/2, BLUE);  // Y-axis
     DrawLine(-WIDTH/2, 0, WIDTH/2, 0, BLUE); // X-axis
 }
 
-void DrawGraph() {
-    DrawAxes();
-    float delta_x = 0.01;
+void DrawGrid2D(int slices, int spacing ) {
+    
+    for (int i = -slices; i < slices; i++) {
+        DrawLine((i+1)*spacing,-HEIGHT,(i+1)*spacing,HEIGHT,BLUE);
+        char str[10];
+        DrawText(TextFormat("%.2f",(i+1)*spacing/SCALE),(i+1)*spacing,0,20,RAYWHITE);
+    }
+    for (int j = -slices; j < slices; j++) {
+        DrawLine(-WIDTH,(j+1)*spacing,WIDTH,(j+1)*spacing,BLUE);
+        DrawText(TextFormat("%.2f",(j+1)*spacing/SCALE),0,(j+1)*spacing,20,RAYWHITE);
+    }   
+}
 
-    Vector2 points[4801];
+void DrawGraph(float (*f)(float)) {
+
+    float delta_x = WIDTH/2/SCALE / 100;
+
+    Vector2 points[10000];
 
     int index = 0;
 
 
-    for (float x =  -WIDTH/2/SCALE; x <  WIDTH/2/SCALE;x += delta_x) {
+    for (float x = -WIDTH/2/SCALE; x <  WIDTH/2/SCALE;x += delta_x) {
 
-        float y1 = function(x);
-        float y2 = function(x + delta_x);
+        float y1 = f(x);
+        float y2 = f(x + delta_x);
 
         Vector2 p1 = {x, -y1};
         Vector2 p2 = {(x + delta_x), -y2};
@@ -38,14 +56,11 @@ void DrawGraph() {
         /*p2 = Vector2Subtract(p2, (Vector2){WIDTH/2,0});*/
 
         points[index] = p1;
-        points[index+1] = p2;
-        
-        index+=2;
+        points[index++] = p2;
 
         /*DrawLineV(p1, p2, RAYWHITE);*/
     }
-    TraceLog(LOG_INFO,"%d\n",index);
-    DrawSplineCatmullRom(points,4801,5,RAYWHITE);
+    DrawSplineCatmullRom(points,index,1,RAYWHITE);
 }
 
 void MoveCam(Camera2D *cam) {
@@ -70,6 +85,7 @@ void MoveCam(Camera2D *cam) {
         cam->zoom += 1;
     }
 }
+
 int main() {
     InitWindow(WIDTH, HEIGHT, "Function Plotter");
     SetTargetFPS(60);
@@ -84,15 +100,21 @@ int main() {
         ClearBackground(DARKGRAY);
 
         MoveCam(&cam);
-        DrawGraph();
+        DrawAxes();
+        DrawGrid2D(100,100);
 
-        DrawCircle(0,0,10,PURPLE); // Center dot (0,0)
+        DrawGraph(function);
+        DrawGraph(function2);
+
+        DrawCircle(0,0,5,PURPLE); // Center dot (0,0)
 
         // Window Frame
+        /*
         DrawLine(0,0,WIDTH,0,GOLD);
         DrawLine(WIDTH,0, WIDTH, HEIGHT,GOLD);
         DrawLine(WIDTH, HEIGHT, 0, HEIGHT,GOLD);
         DrawLine(0, HEIGHT, 0,0,GOLD);
+        */
 
         EndMode2D();
 
