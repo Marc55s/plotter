@@ -4,11 +4,15 @@
 
 #define WIDTH 1200
 #define HEIGHT 800
-float SCALE = 50.0; // Scale factor (pixels per unit)
+#define GRID_WHITE (Color){120,120,120,255}
 
-float function(float x) { return sin(x); }
 
-float function2(float x) { return x; }
+double SCALE = 50.0; // Scale factor (pixels per unit)
+
+double function(double x) { return sin(x); }
+double function2(double x) { return x; }
+double quadratic(double x) { return x * x; }
+double cool(double x) { return tan(x); }
 
 void DrawAxes(Camera2D cam) {
     Vector2 worldMin = GetScreenToWorld2D((Vector2){0, 0}, cam);
@@ -21,40 +25,47 @@ void DrawAxes(Camera2D cam) {
     DrawText("Y", -20,worldMin.y+10,20,RAYWHITE);
 }
 
-void DrawGrid2D(int slices, int spacing, Camera2D *cam) {
+void DrawGrid2D(int slices, int spacing, Camera2D cam) {
+    Vector2 worldMin = GetScreenToWorld2D((Vector2){0, 0}, cam);
+    Vector2 worldMax = GetScreenToWorld2D((Vector2){WIDTH, HEIGHT}, cam);
+    for (int i = -slices; i <= slices; i++) {
+        DrawLine(spacing*i, worldMin.y, spacing*i, worldMax.y, GRID_WHITE);
+        DrawLine(worldMin.x, spacing*i, worldMax.x, spacing*i, GRID_WHITE);  // X-axis
+    }
+
 }
 
-void DrawGraph(float (*f)(float)) {
+void DrawGraph(double (*f)(double), Color color) {
 
-    float delta_x = WIDTH / 2 / SCALE / 100;
+    double delta_x = WIDTH / 2 / SCALE / 500;
 
     Vector2 points[10000];
 
     int index = 0;
 
-    for (float x = -WIDTH / 2 / SCALE; x < WIDTH / 2 / SCALE; x += delta_x) {
+    for (double x = -WIDTH / 2 / SCALE; x < WIDTH / 2 / SCALE; x += delta_x) {
 
-        float y1 = f(x);
-        float y2 = f(x + delta_x);
+        double y1 = f(x);
+        double y2 = f(x + delta_x);
 
-        Vector2 p1 = {x, -y1};
-        Vector2 p2 = {(x + delta_x), -y2};
-        p1 = Vector2Scale(p1, SCALE);
-        p2 = Vector2Scale(p2, SCALE);
+        if(fabs(y1-y2) < 100){
+            Vector2 p1 = {x, -y1};
+            Vector2 p2 = {(x + delta_x), -y2};
+            p1 = Vector2Scale(p1, SCALE);
+            p2 = Vector2Scale(p2, SCALE);
+            points[index++] = p1;
+            points[index++] = p2;
+            DrawLineV(p1,p2,color);
+        }else{
+            TraceLog(LOG_INFO,"DIFF: (%lf)",fabs(y1-y2));
+        }
 
-        /*p1 = Vector2Subtract(p1, (Vector2){WIDTH/2,0});*/
-        /*p2 = Vector2Subtract(p2, (Vector2){WIDTH/2,0});*/
 
-        points[index] = p1;
-        points[index++] = p2;
-
-        /*DrawLineV(p1, p2, RAYWHITE);*/
     }
-    DrawSplineCatmullRom(points, index, 1, RAYWHITE);
 }
 
 void MoveCam(Camera2D *cam) {
-    float step = 3 * cam->zoom;
+    double step = 3 * cam->zoom;
     if (IsKeyDown(KEY_W)) {
         cam->offset.y += step;
     }
@@ -90,20 +101,16 @@ int main() {
         ClearBackground(DARKGRAY);
 
         MoveCam(&cam);
+        DrawGrid2D(10000,50,cam);
         DrawAxes(cam);
 
-        DrawGraph(function);
-        DrawGraph(function2);
+        DrawGraph(function,YELLOW);
+        DrawGraph(function2,DARKPURPLE);
+        DrawGraph(quadratic,RED);
+        DrawGraph(cool,RAYWHITE);
 
         DrawCircle(0, 0, 5, PURPLE); // Center dot (0,0)
 
-        // Window Frame
-        /*
-    DrawLine(0,0,WIDTH,0,GOLD);
-    DrawLine(WIDTH,0, WIDTH, HEIGHT,GOLD);
-    DrawLine(WIDTH, HEIGHT, 0, HEIGHT,GOLD);
-    DrawLine(0, HEIGHT, 0,0,GOLD);
-    */
 
         EndMode2D();
 
