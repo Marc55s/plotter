@@ -7,11 +7,11 @@
     - Partial-Differential-Equations
 
 # TODO
-- [x] relative Grid
-- [ ] Input for functions to plot
-- [ ] Pole point fix
+- [ ] relative Grid
+- [ ] Input parser for functions to plot
+- [ ] Handling pole-points
 - [ ] better camera movement
-- [ ] implement gestures
+    - [ ] implement gestures
 
 # Usage
 - Gnu math lib?
