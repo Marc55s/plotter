@@ -39,25 +39,65 @@ void DrawAxes(Camera2D camera) {
     DrawLine(0, worldMin.y - 1, 0, worldMax.y + 1, GOLD); // Y-Axis
 }
 
-void DrawGrid2D(Camera2D camera) {
-    Vector2 worldMin = GetScreenToWorld2D((Vector2){0, 0}, camera);
-    Vector2 worldMax = GetScreenToWorld2D((Vector2){WIDTH, HEIGHT}, camera);
+void DrawSmartGrid2D(Camera2D camera, float baseGridSpacing, int majorLineEveryN, Color minorColor, Color majorColor) {
+    Vector2 screenMin = {0, 0};
+    Vector2 screenMax = {WIDTH, HEIGHT};
 
-    // Adjust grid spacing based on the zoom level
-    double gridSpacing = 1.0 / camera.zoom;  // Scale grid based on zoom
-    
-    // Set limits to avoid too fine or too coarse grid lines
-    if (gridSpacing < 0.1) gridSpacing = 0.1;   // Minimum grid spacing
-    if (gridSpacing > 5.0) gridSpacing = 5.0;   // Maximum grid spacing
+    Vector2 worldMin = GetScreenToWorld2D(screenMin, camera);
+    Vector2 worldMax = GetScreenToWorld2D(screenMax, camera);
 
-    // Y Grid lines (vertical lines)
-    for (double i = floor(worldMin.x / gridSpacing) * gridSpacing; i < worldMax.x; i += gridSpacing) {
-        DrawLineV((Vector2){i, worldMin.y}, (Vector2){i, worldMax.y}, GRAY);
+    // Adaptive spacing based on zoom
+    float zoom = camera.zoom;
+    float rawSpacing = baseGridSpacing / zoom;
+
+    // Snap spacing to "nice" round numbers: 1, 2, 5, 10, etc.
+    float magnitude = powf(10.0f, floorf(log10f(rawSpacing)));
+    float normalized = rawSpacing / magnitude;
+
+    float niceSpacing;
+    if (normalized < 1.5f)
+        niceSpacing = 1.0f;
+    else if (normalized < 3.0f)
+        niceSpacing = 2.0f;
+    else if (normalized < 7.0f)
+        niceSpacing = 5.0f;
+    else
+        niceSpacing = 10.0f;
+
+    float spacing = niceSpacing * magnitude;
+
+    // prevent float rounding jiggle
+    float startX = floorf(worldMin.x / spacing) * spacing;
+    float endX = ceilf(worldMax.x / spacing) * spacing;
+    float startY = floorf(worldMin.y / spacing) * spacing;
+    float endY = ceilf(worldMax.y / spacing) * spacing;
+
+    // Vertical lines
+    for (float x = startX; x <= endX; x += spacing) {
+        int index = (int)roundf(x / spacing);
+        bool isMajor = (index % majorLineEveryN == 0);
+        DrawLineV((Vector2){x, worldMin.y}, (Vector2){x, worldMax.y}, isMajor ? majorColor : minorColor);
+
+        // Label
+        if (isMajor) {
+            const char *label = TextFormat("%f", x);
+            Vector2 labelPos = {x + spacing * 0.5f, worldMin.y + spacing * 0.5f}; // offset a bit
+            DrawTextPro(GetFontDefault(), label, labelPos, (Vector2){0, 0}, 0.0f, spacing * 0.5, spacing * 0.1f, RED);
+        }
     }
 
-    // X Grid lines (horizontal lines)
-    for (double i = floor(worldMin.y / gridSpacing) * gridSpacing; i < worldMax.y; i += gridSpacing) {
-        DrawLineV((Vector2){worldMin.x, i}, (Vector2){worldMax.x, i}, GRAY);
+    // Horizontal lines
+    for (float y = startY; y <= endY; y += spacing) {
+        int index = (int)roundf(y / spacing);
+        bool isMajor = (index % majorLineEveryN == 0);
+        DrawLineV((Vector2){worldMin.x, y}, (Vector2){worldMax.x, y}, isMajor ? majorColor : minorColor);
+
+        // Label
+        if (isMajor) {
+            const char *label = TextFormat("%f", y);
+            Vector2 labelPos = {worldMin.x + spacing * 0.05f, y + spacing * 0.5f};
+            DrawTextPro(GetFontDefault(), label, labelPos, (Vector2){0, 0}, 0.0f, spacing * 0.5, spacing * 0.1f, BLUE);
+        }
     }
 }
 
@@ -95,7 +135,6 @@ void UpdateCameraControl(Camera2D *camera) {
     }
 }
 
-
 int main() {
     InitWindow(WIDTH, HEIGHT, "Function Plotter");
     SetTargetFPS(60);
@@ -112,7 +151,7 @@ int main() {
 
         ClearBackground(BLACK);
 
-        DrawGrid2D(camera);
+        DrawSmartGrid2D(camera, 32.0, 10, DARKGRAY, LIGHTGRAY);
         DrawAxes(camera);
         DrawGraph(sinus, camera);
         DrawGraph(cos, camera);
