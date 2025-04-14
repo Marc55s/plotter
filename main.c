@@ -1,5 +1,4 @@
 #include "raylib.h"
-#include "raymath.h"
 #include <math.h>
 
 #define WIDTH 1200
@@ -7,24 +6,25 @@
 #define GRID_WHITE (Color){120, 120, 120, 255}
 
 double sinus(double x) { return sin(x); }
-double quad(double x) { return x * x; }
+double quad(double x) { return 3*x * x *x - 2 *x*x - 8 *x; }
 
-void DrawGraph(double (*func)(double), Camera2D cam) {
+
+void DrawGraph(double (*func)(double), Camera2D cam, Color color) {
     Vector2 worldMin = GetScreenToWorld2D((Vector2){0, 0}, cam);
     Vector2 worldMax = GetScreenToWorld2D((Vector2){WIDTH, HEIGHT}, cam);
 
-    double DELTA_X =
-        (fabs(worldMin.x - worldMax.x)) /
-        5000; // guarantees same amount of steps, for any width of x-axis
+    double DELTA_X = (fabs(worldMin.x - worldMax.x)) / 5000; // guarantees same amount of steps, for any width of x-axis
 
     for (double i = worldMin.x; i < worldMax.x; i += DELTA_X) {
         double y = func(i);
         double y2 = func(i + DELTA_X);
 
-        if (fabs(cos(i)) > 0.001 && fabs(y - y2) < 100) {
+        if(isfinite(y) && isfinite(y2)) {
             Vector2 start = (Vector2){i, -y};
             Vector2 end = (Vector2){i + DELTA_X, -y2};
-            DrawLineV(start, end, RAYWHITE);
+            DrawLineV(start, end, color);
+        }else {
+            TraceLog(LOG_DEBUG, "Non Finite Function");
         }
     }
 }
@@ -73,6 +73,7 @@ void DrawSmartGrid2D(Camera2D camera, float baseGridSpacing, int majorLineEveryN
     float endY = ceilf(worldMax.y / spacing) * spacing;
 
     // Vertical lines
+    //
     for (float x = startX; x <= endX; x += spacing) {
         int index = (int)roundf(x / spacing);
         bool isMajor = (index % majorLineEveryN == 0);
@@ -80,9 +81,9 @@ void DrawSmartGrid2D(Camera2D camera, float baseGridSpacing, int majorLineEveryN
 
         // Label
         if (isMajor) {
-            const char *label = TextFormat("%f", x);
-            Vector2 labelPos = {x + spacing * 0.5f, worldMin.y + spacing * 0.5f}; // offset a bit
-            DrawTextPro(GetFontDefault(), label, labelPos, (Vector2){0, 0}, 0.0f, spacing * 0.5, spacing * 0.1f, RED);
+            const char *label_text = TextFormat("%.3f", x);
+            Vector2 label_pos = {x + spacing , 0}; // offset a bit
+            DrawTextPro(GetFontDefault(), label_text, label_pos, (Vector2){0, 0}, 0.0f, spacing * 0.4, spacing * 0.1f, WHITE);
         }
     }
 
@@ -94,9 +95,10 @@ void DrawSmartGrid2D(Camera2D camera, float baseGridSpacing, int majorLineEveryN
 
         // Label
         if (isMajor) {
-            const char *label = TextFormat("%f", y);
-            Vector2 labelPos = {worldMin.x + spacing * 0.05f, y + spacing * 0.5f};
-            DrawTextPro(GetFontDefault(), label, labelPos, (Vector2){0, 0}, 0.0f, spacing * 0.5, spacing * 0.1f, BLUE);
+            const char *label_text = TextFormat("%.3f", y);
+            Vector2 label_pos = {0, y + spacing * 0.5f};
+
+            DrawTextPro(GetFontDefault(), label_text, label_pos, (Vector2){0, 0}, 0.0f, spacing * 0.4, spacing * 0.1f, WHITE);
         }
     }
 }
@@ -105,11 +107,13 @@ void UpdateCameraControl(Camera2D *camera) {
     Vector2 worldBeforeZoom =
         GetScreenToWorld2D((Vector2){WIDTH / 2.0f, HEIGHT / 2.0f}, *camera);
 
-    TraceLog(LOG_INFO, "zoom at > %f", camera->zoom);
+    // TraceLog(LOG_INFO, "zoom at > %f", camera->zoom);
     if (IsKeyDown(KEY_E)) {
-        camera->zoom *= 1.1;
+        if(camera->zoom < 1000000)
+            camera->zoom *= 1.1;
     }
     if (IsKeyDown(KEY_Q)) {
+        if(camera->zoom > 0.000001)
         camera->zoom /= 1.1;
     }
 
@@ -151,11 +155,13 @@ int main() {
 
         ClearBackground(BLACK);
 
-        DrawSmartGrid2D(camera, 32.0, 10, DARKGRAY, LIGHTGRAY);
+        DrawSmartGrid2D(camera, 32.0, 5, DARKGRAY, LIGHTGRAY);
         DrawAxes(camera);
-        DrawGraph(sinus, camera);
-        DrawGraph(cos, camera);
-        DrawGraph(quad, camera);
+        DrawGraph(sinus, camera,LIME);
+        DrawGraph(cos, camera,GOLD);
+        DrawGraph(quad, camera,YELLOW);
+        DrawGraph(exp2, camera,YELLOW);
+
         /*DrawGraph(tan, camera);*/
         /*DrawCircle(0, 0, 10, RED);*/
 
